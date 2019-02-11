@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace CETT.Properties
+namespace dw9.Properties
 {
 
 

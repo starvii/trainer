@@ -9,16 +9,11 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows.Forms;
 
-namespace CETT
+namespace lib
 {
-    public partial class Form1 : Form
+    public class TrainerLib
     {
-
-
-        //只适配X64平台。
-
         [DllImport("kernel32.dll")]
         [return: MarshalAs(UnmanagedType.Bool)]
         private static extern Boolean ReadProcessMemory(HandleRef hProcess, Int64 lpBaseAddress, [In, Out] Byte[] lpBuffer, Int64 nSize, Int64 lpNumberOfBytesRead);
@@ -161,124 +156,5 @@ namespace CETT
         }
 
         #endregion
-
-        /* 
-        Tutorial-x86_64.exe+2B423 - 75 38                 - jne Tutorial-x86_64.exe+2B45D
-        Tutorial-x86_64.exe+2B425 - 48 8B 8B 60070000     - mov rcx,[rbx+00000760]
-        */
-        private static readonly Byte[] AsmArray = new Byte[] { 0x75, 0x38, 0x48, 0x8B, 0x8B, 0x60, 0x07, 0x00, 0x00 };
-
-        private static readonly Byte[] NOPCode = new Byte[] { 0x90, 0x90 };
-
-        private Int64 AsmAddress = 0;
-
-
-
-        public Form1()
-        {
-            InitializeComponent();
-        }
-
-
-
-        //TimerListener.Tick事件
-        private void TimerListener_Tick(object sender, EventArgs e)
-        {
-            if (GameProcess == null)
-            {
-                var processes = Process.GetProcessesByName("Tutorial-x86_64");
-                if (processes.Length > 0)
-                {
-
-                    Thread.Sleep(1000);//等待进程加载完毕，1S足够了
-                    foreach (var process in processes)
-                    {
-                        try
-                        {
-                            //一旦捕获过，就不再尝试了，直接释放
-                            if (GameProcess == null && process.MainWindowTitle == "Tutorial-x86_64")
-                            {
-                                GameProcess = process;
-                                AsmAddress = Aobscan(AsmArray);
-                                if (AsmAddress == 0) //查找失败，说明不是正确的进程或不支持修改
-                                {
-                                    GameProcess = null;
-                                    process.Dispose();
-                                }
-                                else
-                                {
-                                    //绑定退出事件
-                                    GameProcess.EnableRaisingEvents = true;
-                                    GameProcess.Exited += GameProcess_Exited;
-                                    //激活Checkbox
-                                    CheckBoxPassBy.Enabled = true;
-
-                                }
-
-                            }
-                            else
-                            {
-                                process.Dispose();
-                            }
-                        }
-                        catch
-                        {
-                            process.Dispose();
-                            GameProcess = null;
-                        }
-
-                    }
-                }
-            }
-        }
-
-        private delegate void DelegateGameClose();
-
-        private void GameClose()
-        {
-            CheckBoxPassBy.Enabled = false;
-            CheckBoxPassBy.Checked = false;
-        }
-        private void GameProcess_Exited(object sender, EventArgs e)
-        {
-            this.Invoke(new DelegateGameClose(GameClose));
-            if (GameProcess != null)
-            {
-                GameProcess.Exited -= GameProcess_Exited;
-                GameProcess.Dispose();
-                GameProcess = null;
-            }
-        }
-
-        private void CheckBoxPassBy_CheckedChanged(object sender, EventArgs e)
-        {
-            //如果游戏已退出就不修改
-            if (CheckBoxPassBy.Enabled == false) return;
-
-            if (CheckBoxPassBy.Checked) 
-            {
-                WriteBytes(AsmAddress, NOPCode);
-            }
-            else
-            {
-                WriteBytes(AsmAddress, AsmArray, 2);
-            }
-
-        }
-
-        private void Form1_FormClosed(object sender, FormClosedEventArgs e)
-        {
-            if (GameProcess != null && CheckBoxPassBy.Checked == true)
-            {
-                CheckBoxPassBy.Checked = false;
-                GameProcess.Dispose();
-            }
-        }
-
-
-
     }
-
-
-
 }
