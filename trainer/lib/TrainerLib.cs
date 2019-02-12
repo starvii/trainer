@@ -55,18 +55,106 @@ namespace lib
         private const UInt32 MEM_COMMIT = 0x1000;
 
         //全局变量，表示游戏进程
-        private Process GameProcess = null;
+        public Process GameProcess { get; private set; }
 
-        private Byte[] ReadBytes(Int64 address, Int64 length)
+        /// <summary>
+        /// 查找进程名称
+        /// </summary>
+        /// <param name="processName"></param>
+        /// <returns>是否成功找到进程</returns>
+        public bool FindProcess(string processName)
+        {
+            string pn = processName.Trim();
+            if (pn.ToLower().EndsWith(".exe"))
+            {
+                pn = pn.Substring(0, pn.Length - 4);
+            }
+            foreach (var proc in Process.GetProcessesByName(pn))
+            {
+                GameProcess = proc;
+                return true;
+                //Console.WriteLine(proc.ProcessName);
+                //proc.Dispose();
+            }
+            return false;
+        }
+
+        public bool FindProcess(string processName, string mainWindowTitle)
+        {
+            string pn = processName.Trim();
+            if (pn.ToLower().EndsWith(".exe"))
+            {
+                pn = pn.Substring(0, pn.Length - 4);
+            }
+            foreach (var proc in Process.GetProcessesByName(pn))
+            {
+                if (proc.MainWindowTitle == mainWindowTitle)
+                {
+                    GameProcess = proc;
+                    return true;
+                }
+                else
+                {
+                    proc.Dispose();
+                }
+            }
+            return false;
+        }
+
+        public Byte[] ReadBytes(Int64 address, Int64 length)
         {
             var buffer = new Byte[length];
             ReadProcessMemory(new HandleRef(GameProcess, GameProcess.Handle), address, buffer, length, 0);
             return buffer;
         }
 
-        private void WriteBytes(Int64 address, Byte[] data)
+        public Byte ReadByte(Int64 address)
+        {
+            return ReadBytes(address, 1)[0];
+        }
+
+        public UInt16 ReadUInt16(Int64 address)
+        {
+            return BitConverter.ToUInt16(ReadBytes(address, 2), 0);
+        }
+
+        public UInt32 ReadUInt32(Int64 address)
+        {
+            return BitConverter.ToUInt32(ReadBytes(address, 4), 0);
+        }
+
+        public UInt64 ReadUInt64(Int64 address)
+        {
+            return BitConverter.ToUInt64(ReadBytes(address, 8), 0);
+        }
+
+        public void WriteBytes(Int64 address, Byte[] data)
         {
             WriteProcessMemory(new HandleRef(GameProcess, GameProcess.Handle), address, data, data.LongLength, 0);
+        }
+
+        public void Write(Int64 address, Byte data)
+        {
+            var buffer = new byte[] { data };
+            WriteBytes(address, buffer);
+        }
+
+        public void Write(Int64 address, UInt16 data)
+        {
+            var buffer = BitConverter.GetBytes(data);
+            WriteBytes(address, buffer);
+        }
+
+        public void Write(Int64 address, UInt32 data)
+        {
+            var buffer = BitConverter.GetBytes(data);
+            WriteBytes(address, buffer);
+        }
+
+        public void Write(Int64 address, UInt64 data)
+        {
+            var buffer = BitConverter.GetBytes(data);
+            WriteBytes(address, buffer);
         }
 
         private void WriteBytes(Int64 address, Byte[] data, Int32 length)
